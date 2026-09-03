@@ -26,10 +26,13 @@ def main() -> None:
             directory.chmod(directory.stat().st_mode | 0o700)
 
         defaults = Path("/app/static")
-        for filename in ("index.html", "pdf-nicht-gefunden.html"):
-            target = data / filename
+        for source_name, target_name in (
+            ("index.example.html", "index.html"),
+            ("pdf-nicht-gefunden.html", "pdf-nicht-gefunden.html"),
+        ):
+            target = data / target_name
             if not target.exists():
-                shutil.copy2(defaults / filename, target)
+                shutil.copy2(defaults / source_name, target)
             os.chown(target, account.pw_uid, account.pw_gid)
 
         os.initgroups(account.pw_name, account.pw_gid)

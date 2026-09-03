@@ -166,10 +166,17 @@ def create_app(test_config: dict | None = None) -> Flask:
         response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         response.headers.setdefault("Referrer-Policy", "same-origin")
         response.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
-        response.headers.setdefault(
-            "Content-Security-Policy",
-            "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'self'; frame-ancestors 'self'",
-        )
+        if request.path in {"/", "/index.html"}:
+            content_security_policy = (
+                "default-src 'none'; img-src data:; style-src 'unsafe-inline'; "
+                "base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+            )
+        else:
+            content_security_policy = (
+                "default-src 'self'; img-src 'self' data:; style-src 'self'; "
+                "script-src 'self'; object-src 'self'; frame-ancestors 'self'"
+            )
+        response.headers.setdefault("Content-Security-Policy", content_security_policy)
         return response
 
     @app.get(APP_PREFIX)
