@@ -20,6 +20,7 @@ def sample_pdf() -> bytes:
 
 @pytest.fixture()
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("APP_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("PDF_STORAGE_DIR", str(tmp_path / "pdf"))
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://pdf.example.com")
     monkeypatch.delenv("APP_USERNAME", raising=False)
@@ -96,3 +97,15 @@ def test_static_app_routes(client):
     assert b'/app/static/app.js' in index.data
     assert client.get("/app/static/app.css").status_code == 200
     assert client.get("/app/api/health").json == {"status": "ok"}
+
+
+def test_public_pages_are_served_from_data_directory(client, tmp_path: Path):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "index.html").write_text("public start", encoding="utf-8")
+    (data / "pdf-nicht-gefunden.html").write_text("public 404", encoding="utf-8")
+
+    assert client.get("/").data == b"public start"
+    assert client.get("/index.html").data == b"public start"
+    assert client.get("/pdf-nicht-gefunden.html").data == b"public 404"
+    assert client.get("/pdf/missing.pdf").data == b"public 404"

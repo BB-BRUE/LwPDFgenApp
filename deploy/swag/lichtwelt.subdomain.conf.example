@@ -4,20 +4,35 @@ server {
 
     server_name lichtwelt.bartenbach.com;
 
-    root /config/www/lichtwelt;
-    index index.html;
-
     include /config/nginx/ssl.conf;
 
-    # Statische Startseite der bestehenden Lichtwelt-Website.
-    location = /index.html {
-        try_files /index.html =404;
+    # Start- und Fehlerseite kommen aus demselben App-Datenvolume wie die PDFs.
+    location = / {
+        return 302 /index.html;
     }
 
-    # Die statische PDF-Fehlerseite ist nur über error_page erreichbar.
+    location = /index.html {
+        include /config/nginx/proxy.conf;
+        include /config/nginx/resolver.conf;
+
+        set $upstream_app lwpdfgen;
+        set $upstream_port 8000;
+        set $upstream_proto http;
+
+        proxy_pass $upstream_proto://$upstream_app:$upstream_port;
+    }
+
     location = /pdf-nicht-gefunden.html {
         internal;
-        try_files /pdf-nicht-gefunden.html =404;
+
+        include /config/nginx/proxy.conf;
+        include /config/nginx/resolver.conf;
+
+        set $upstream_app lwpdfgen;
+        set $upstream_port 8000;
+        set $upstream_proto http;
+
+        proxy_pass $upstream_proto://$upstream_app:$upstream_port;
     }
 
     # Die Verwaltungsoberfläche liegt unter /app/.
@@ -50,7 +65,7 @@ server {
         # Nicht erlaubte IP: unabhängig von der Existenz der PDF zur Startseite.
         error_page 403 = @pdf_startseite;
 
-        # Erlaubte IP, PDF existiert aber nicht: statische Fehlerseite ausliefern.
+        # Erlaubte IP, PDF existiert aber nicht: Fehlerseite aus dem App-Datenvolume.
         proxy_intercept_errors on;
         error_page 404 /pdf-nicht-gefunden.html;
 
@@ -64,13 +79,12 @@ server {
         proxy_pass $upstream_proto://$upstream_app:$upstream_port;
     }
 
-    # Browser mit nicht erlaubter Quell-IP auf die Startseite umleiten.
     location @pdf_startseite {
         return 302 /index.html;
     }
 
-    # Restliche statische Website ohne internen Fallback.
+    # Es gibt kein separates Webroot mehr.
     location / {
-        try_files $uri $uri/ =404;
+        return 404;
     }
 }

@@ -37,11 +37,25 @@ def env_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def storage_directory() -> Path:
-    configured = os.getenv("PDF_STORAGE_DIR", "data/pdf")
+def data_directory() -> Path:
+    configured = os.getenv("APP_DATA_DIR", "data")
     path = Path(configured).expanduser()
     return (path if path.is_absolute() else APP_ROOT / path).resolve()
 
+
+def storage_directory() -> Path:
+    configured = os.getenv("PDF_STORAGE_DIR")
+    if configured:
+        path = Path(configured).expanduser()
+        return (path if path.is_absolute() else APP_ROOT / path).resolve()
+    return data_directory() / "pdf"
+
+
+def public_page(filename: str) -> Response:
+    root = data_directory()
+    if (root / filename).is_file():
+        return send_from_directory(root, filename)
+    return send_from_directory(STATIC_ROOT, filename)
 
 def conversion_config() -> dict:
     return {
@@ -121,6 +135,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             request.path == f"{APP_PREFIX}/api/health"
             or request.path == f"{APP_PREFIX}/static/app.css"
             or request.path.startswith("/pdf/")
+            or request.path in {"/", "/index.html", "/pdf-nicht-gefunden.html"}
         ):
             return None
         if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.headers.get("X-LwPDFgen") != "web":
@@ -161,6 +176,15 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.get(f"{APP_PREFIX}/")
     def index() -> Response:
         return send_from_directory(STATIC_ROOT, "index.html")
+
+    @app.get("/")
+    @app.get("/index.html")
+    def public_index() -> Response:
+        return public_page("index.html")
+
+    @app.get("/pdf-nicht-gefunden.html")
+    def pdf_not_found() -> Response:
+        return public_page("pdf-nicht-gefunden.html")
 
     @app.get(f"{APP_PREFIX}/static/<path:filename>")
     def static_asset(filename: str) -> Response:
@@ -239,9 +263,9 @@ def create_app(test_config: dict | None = None) -> Flask:
         try:
             path = safe_pdf_path(filename)
         except ValueError:
-            return send_from_directory(STATIC_ROOT, "pdf-nicht-gefunden.html"), 404
+            return public_page("pdf-nicht-gefunden.html"), 404
         if not path.is_file():
-            return send_from_directory(STATIC_ROOT, "pdf-nicht-gefunden.html"), 404
+            return public_page("pdf-nicht-gefunden.html"), 404
         return send_file(path, mimetype="application/pdf", conditional=True, max_age=0)
 
     @app.delete(f"{APP_PREFIX}/api/documents/<path:filename>")
