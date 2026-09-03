@@ -18,4 +18,4 @@ services:
 networks:
   swag:
     external: true
-    name: ${SWAG_NETWORK:-swag}
+    name: ${SWAG_NETWORK:-swag_proxy-net}
