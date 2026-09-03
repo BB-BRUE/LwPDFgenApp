@@ -8,7 +8,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system lwpdfgen && adduser --system --ingroup lwpdfgen lwpdfgen
+ARG APP_UID=1000
+ARG APP_GID=1000
+
+RUN groupadd --gid "$APP_GID" lwpdfgen \
+    && useradd --uid "$APP_UID" --gid "$APP_GID" --no-create-home --shell /usr/sbin/nologin lwpdfgen
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

@@ -23,7 +23,7 @@ from typing import Any, Iterable
 from urllib.parse import quote
 
 import pdfplumber
-from PIL import Image as PILImage, ImageDraw
+from PIL import Image as PILImage, ImageDraw, ImageFont
 from pypdf import PdfReader
 from reportlab.graphics.barcode.qr import QrCodeWidget
 from reportlab.lib.colors import Color, HexColor, white
@@ -32,7 +32,8 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 
 
-ORANGE = HexColor("#ff6200")
+ORANGE = HexColor("#fa961e")  # RGB 250/150/30; brand reference CMYK 0/50/100/0.
+QR_ORANGE = (250, 150, 30)
 BLACK = HexColor("#242424")
 GREY = HexColor("#777777")
 LIGHT_GREY = HexColor("#f7f7f7")
@@ -417,7 +418,7 @@ def convert_pdf(source: Path, output: Path, config: dict[str, Any]) -> None:
 
 
 def qr_png_bytes(url: str, size: int = 900) -> bytes:
-    widget = QrCodeWidget(url)
+    widget = QrCodeWidget(url, barLevel="H")
     widget.qr.make()
     modules = widget.qr.modules
     border = 4
@@ -435,6 +436,35 @@ def qr_png_bytes(url: str, size: int = 900) -> bytes:
                     (x0, y0, x0 + pixels_per_module - 1, y0 + pixels_per_module - 1),
                     fill="black",
                 )
+
+    center = actual_size // 2
+    mark_diameter = max(pixels_per_module * 7, round(actual_size * 0.21))
+    mark_radius = mark_diameter // 2
+    halo_radius = mark_radius + pixels_per_module
+    draw.ellipse(
+        (center - halo_radius, center - halo_radius, center + halo_radius, center + halo_radius),
+        fill="white",
+    )
+    draw.ellipse(
+        (center - mark_radius, center - mark_radius, center + mark_radius, center + mark_radius),
+        fill=QR_ORANGE,
+    )
+    ring_width = max(2, pixels_per_module)
+    inner_radius = mark_radius - ring_width
+    draw.ellipse(
+        (center - inner_radius, center - inner_radius, center + inner_radius, center + inner_radius),
+        fill="white",
+    )
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(10, round(mark_diameter * 0.58)))
+    except OSError:
+        font_size = max(10, round(mark_diameter * 0.58))
+        try:
+            font = ImageFont.load_default(size=font_size)
+        except TypeError:  # Pillow 10.0 compatibility.
+            font = ImageFont.load_default()
+    draw.text((center, center), "B", fill=QR_ORANGE, font=font, anchor="mm")
+
     output = io.BytesIO()
     image.save(output, format="PNG", optimize=True)
     return output.getvalue()

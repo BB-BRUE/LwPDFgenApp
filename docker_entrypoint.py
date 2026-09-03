@@ -26,14 +26,14 @@ def main() -> None:
             directory.chmod(directory.stat().st_mode | 0o700)
 
         defaults = Path("/app/static")
-        for source_name, target_name in (
-            ("index.example.html", "index.html"),
-            ("pdf-nicht-gefunden.html", "pdf-nicht-gefunden.html"),
-            ("bartenbach_lighting innovators.png", "bartenbach-logo.png"),
-            ("wifi-lw-internet-qr.png", "wifi-lw-internet-qr.png"),
+        for source_name, target_name, overwrite in (
+            ("index.example.html", "index.html", False),
+            ("pdf-nicht-gefunden.html", "pdf-nicht-gefunden.html", False),
+            ("bartenbach_lighting innovators.png", "bartenbach-logo.png", True),
+            ("wifi-lw-internet-qr.png", "wifi-lw-internet-qr.png", True),
         ):
             target = data / target_name
-            if not target.exists():
+            if overwrite or not target.exists():
                 shutil.copy2(defaults / source_name, target)
             os.chown(target, account.pw_uid, account.pw_gid)
 

@@ -1,6 +1,10 @@
 services:
   lwpdfgen:
-    build: .
+    build:
+      context: .
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
     container_name: lwpdfgen
     restart: unless-stopped
     environment:

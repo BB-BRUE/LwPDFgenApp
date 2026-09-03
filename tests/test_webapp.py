@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 
 import pytest
+from PIL import Image
 from reportlab.pdfgen import canvas
 
 
@@ -58,6 +59,10 @@ def test_upload_list_qr_and_delete(client):
     assert qr.status_code == 200
     assert qr.mimetype == "image/png"
     assert qr.data.startswith(b"\x89PNG")
+    qr_image = Image.open(io.BytesIO(qr.data)).convert("RGB")
+    center = qr_image.width // 2
+    center_pixels = qr_image.crop((center - 100, center - 100, center + 100, center + 100)).getdata()
+    assert (250, 150, 30) in center_pixels
     qr.close()
 
     deleted = client.delete(f"/app/api/documents/{name}", headers={"X-LwPDFgen": "web"})

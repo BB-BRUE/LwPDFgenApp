@@ -9,6 +9,7 @@ Die Weboberfläche ergänzt die bestehende Pipeline um:
 - dauerhafte Ablage der fertigen Dateien
 - öffentliche PDFs unter `/pdf/<datei>.pdf`
 - QR-Code-Download für jede vorhandene PDF
+- QR-Codes im Bartenbach-Design mit schwarzem Codemuster und orangefarbenem B-Mittelzeichen
 - Öffnen und Löschen vorhandener PDFs
 - optionalen HTTP-Basisschutz für die Verwaltungsoberfläche
 
@@ -72,6 +73,8 @@ Die Anwendung veröffentlicht absichtlich keinen Host-Port und ist nur im gemein
 ### Berechtigungen des Datenverzeichnisses
 
 Ein Host-Benutzer mit dem Namen `lwpdfgen` allein löst Bind-Mount-Berechtigungen nicht zuverlässig: Linux vergleicht die numerische UID und GID, nicht den Benutzernamen.
+
+Der Container-Benutzer `lwpdfgen` wird standardmäßig mit UID und GID `1000` gebaut. Damit erscheinen die Dateien auf einem Ubuntu-Host mit Benutzer `ubuntu` (UID/GID `1000`) als Eigentum von `ubuntu`. Die Werte können bei Bedarf über `APP_UID` und `APP_GID` in `.env` geändert werden.
 
 Der Container startet deshalb nur für die Initialisierung mit Root-Rechten. Der Entry-Point legt `data/pdf/.tmp` an, setzt den Container-Benutzer `lwpdfgen` als Eigentümer der benötigten Verzeichnisse und Dateien und startet Gunicorn anschließend als dieser unprivilegierte Benutzer. Die Webanwendung selbst läuft nicht als Root. Auf einem normalen lokalen Linux-Dateisystem ist deshalb kein zusätzlicher Host-Benutzer und kein manuelles `chmod 777` erforderlich.
 
