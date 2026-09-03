@@ -104,8 +104,13 @@ def test_public_pages_are_served_from_data_directory(client, tmp_path: Path):
     data.mkdir()
     (data / "index.html").write_text("public start", encoding="utf-8")
     (data / "pdf-nicht-gefunden.html").write_text("public 404", encoding="utf-8")
+    (data / "bartenbach-logo.png").write_bytes(b"logo")
+    (data / "wifi-lw-internet-qr.png").write_bytes(b"qr")
 
     assert client.get("/").data == b"public start"
     assert client.get("/index.html").data == b"public start"
     assert client.get("/pdf-nicht-gefunden.html").data == b"public 404"
     assert client.get("/pdf/missing.pdf").data == b"public 404"
+    assert client.get("/site-assets/bartenbach-logo.png").data == b"logo"
+    assert client.get("/site-assets/wifi-lw-internet-qr.png").data == b"qr"
+    assert client.get("/site-assets/unknown.png").status_code == 404

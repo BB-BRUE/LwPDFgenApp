@@ -22,6 +22,8 @@ Die Anwendung verwendet nur noch das eine, persistente Host-Verzeichnis `data`, 
 data/
 ├── index.html
 ├── pdf-nicht-gefunden.html
+├── bartenbach-logo.png
+├── wifi-lw-internet-qr.png
 └── pdf/
     └── *.pdf
 ```
@@ -32,7 +34,7 @@ data/
 
 Fehlen die beiden HTML-Dateien beim ersten Start, kopiert der Container Standardversionen aus dem Image nach `data`. Vorhandene Dateien werden nicht überschrieben. Eine bereits verwendete öffentliche Startseite sollte daher vor dem ersten Start nach `data/index.html` kopiert werden.
 
-Die zweisprachige Beispiel-Startseite liegt unter `static/index.example.html`. Sie enthält das Bartenbach-Wortlogo und einen WLAN-QR-Code für `LW-Internet` vollständig eingebettet und benötigt keine zusätzlichen Bild- oder CSS-Dateien.
+Die zweisprachige Beispiel-Startseite liegt unter `static/index.example.html`. Das bereitgestellte Logo `static/bartenbach_lighting innovators.png` und der erzeugte WLAN-QR-Code `static/wifi-lw-internet-qr.png` werden beim ersten Start als separate PNG-Dateien nach `data` kopiert und über `/site-assets/` ausgeliefert.
 
 Ein separates Webroot im SWAG-Verzeichnis, beispielsweise `/config/www/lichtwelt`, wird nicht mehr benötigt. SWAG leitet Startseite, Fehlerseite, Verwaltung und PDFs an den App-Container weiter.
 

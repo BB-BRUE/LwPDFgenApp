@@ -135,6 +135,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             request.path == f"{APP_PREFIX}/api/health"
             or request.path == f"{APP_PREFIX}/static/app.css"
             or request.path.startswith("/pdf/")
+            or request.path.startswith("/site-assets/")
             or request.path in {"/", "/index.html", "/pdf-nicht-gefunden.html"}
         ):
             return None
@@ -168,7 +169,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         response.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
         if request.path in {"/", "/index.html"}:
             content_security_policy = (
-                "default-src 'none'; img-src data:; style-src 'unsafe-inline'; "
+                "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; "
                 "base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
             )
         else:
@@ -192,6 +193,12 @@ def create_app(test_config: dict | None = None) -> Flask:
     @app.get("/pdf-nicht-gefunden.html")
     def pdf_not_found() -> Response:
         return public_page("pdf-nicht-gefunden.html")
+
+    @app.get("/site-assets/<path:filename>")
+    def public_asset(filename: str) -> Response:
+        if filename not in {"bartenbach-logo.png", "wifi-lw-internet-qr.png"}:
+            return jsonify(error="Datei nicht gefunden."), 404
+        return send_from_directory(data_directory(), filename)
 
     @app.get(f"{APP_PREFIX}/static/<path:filename>")
     def static_asset(filename: str) -> Response:

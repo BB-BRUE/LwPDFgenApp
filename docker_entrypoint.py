@@ -29,6 +29,8 @@ def main() -> None:
         for source_name, target_name in (
             ("index.example.html", "index.html"),
             ("pdf-nicht-gefunden.html", "pdf-nicht-gefunden.html"),
+            ("bartenbach_lighting innovators.png", "bartenbach-logo.png"),
+            ("wifi-lw-internet-qr.png", "wifi-lw-internet-qr.png"),
         ):
             target = data / target_name
             if not target.exists():
