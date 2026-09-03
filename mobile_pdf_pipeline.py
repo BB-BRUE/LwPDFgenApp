@@ -40,6 +40,7 @@ RULE_GREY = HexColor("#d8d8d8")
 MM = 72.0 / 25.4
 STATE_VERSION = 1
 QR_LOGO_PATH = Path(__file__).resolve().parent / "static" / "dot_bartenbach.png"
+PDF_BRAND_LOGO_PATH = Path(__file__).resolve().parent / "static" / "bartenbach_master.png"
 
 
 @dataclass
@@ -293,20 +294,35 @@ def wrap(value: str, font: str, size: float, width: float) -> list[str]:
 
 
 class MobileLayout:
-    def __init__(self, content: MobileContent, width: float, margin: float, brand: str, footer: str):
+    def __init__(self, content: MobileContent, width: float, margin: float, brand_logo: Path, footer: str):
         self.content = content
         self.width = width
         self.margin = margin
         self.inner = width - 2 * margin
-        self.brand = brand
+        self.brand_logo = brand_logo
         self.footer = footer
+
+    def _brand_logo(self) -> tuple[ImageReader, float, float]:
+        if not self.brand_logo.is_file():
+            raise FileNotFoundError(f"PDF-Markenlogo fehlt: {self.brand_logo}")
+        with PILImage.open(self.brand_logo) as source:
+            logo = source.convert("RGBA")
+            alpha_box = logo.getchannel("A").getbbox()
+            if alpha_box:
+                logo = logo.crop(alpha_box)
+            data = io.BytesIO()
+            logo.save(data, format="PNG", optimize=True)
+        logo_width = min(self.inner * 0.72, 58 * MM)
+        logo_height = logo_width * logo.height / logo.width
+        return ImageReader(data), logo_width, logo_height
 
     def _text_height(self, value: str, font: str, size: float, leading: float, width: float | None = None) -> float:
         return len(wrap(value, font, size, width or self.inner)) * leading
 
     def height(self) -> float:
         c = self.content
-        total = 28 + 6 + 9
+        _, _, logo_height = self._brand_logo()
+        total = 24 + logo_height + 28
         total += self._text_height(c.title, "Helvetica-Bold", 18, 21) + 12
         total += self._text_height(c.subtitle, "Helvetica", 8, 10) + 47
         total += 1 + 24
@@ -342,8 +358,17 @@ class MobileLayout:
                 pdf.drawString(self.margin if x is None else x, y, line)
                 y -= leading
 
-        draw_wrapped(self.brand.upper(), "Helvetica-Bold", 4.2, 6, ORANGE)
-        y -= 16
+        logo, logo_width, logo_height = self._brand_logo()
+        pdf.drawImage(
+            logo,
+            self.margin,
+            y - logo_height,
+            logo_width,
+            logo_height,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+        y -= logo_height + 28
         draw_wrapped(self.content.title, "Helvetica-Bold", 18, 21)
         y -= 3
         draw_wrapped(self.content.subtitle, "Helvetica", 8, 10, GREY)
@@ -411,10 +436,13 @@ class MobileLayout:
 def convert_pdf(source: Path, output: Path, config: dict[str, Any]) -> None:
     width = float(deep_get(config, "conversion.width_mm", 108)) * MM
     margin = float(deep_get(config, "conversion.margin_mm", 15)) * MM
-    brand = str(deep_get(config, "conversion.brand_label", "Bartenbach · Lichtkonzept"))
+    brand_logo_value = str(deep_get(config, "conversion.brand_logo", PDF_BRAND_LOGO_PATH))
+    brand_logo = Path(brand_logo_value).expanduser()
+    if not brand_logo.is_absolute():
+        brand_logo = (Path(__file__).resolve().parent / brand_logo).resolve()
     footer = str(deep_get(config, "conversion.footer", "Smartphone-optimierte Fassung · automatisch aus der Original-PDF erstellt"))
     content = extract_page(source)
-    MobileLayout(content, width, margin, brand, footer).draw(output)
+    MobileLayout(content, width, margin, brand_logo, footer).draw(output)
 
 
 def qr_png_bytes(url: str, size: int = 900) -> bytes:

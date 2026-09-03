@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 from PIL import Image
+from pypdf import PdfReader
+from pypdf import PdfReader
 from reportlab.pdfgen import canvas
 
 
@@ -53,6 +55,9 @@ def test_upload_list_qr_and_delete(client):
     pdf = client.get(f"/pdf/{name}")
     assert pdf.status_code == 200
     assert pdf.data.startswith(b"%PDF-")
+    generated_page = PdfReader(io.BytesIO(pdf.data)).pages[0]
+    assert "BARTENBACH" not in (generated_page.extract_text() or "").upper()
+    assert len(generated_page.images) >= 1
     pdf.close()
 
     qr = client.get(f"/app/api/documents/{name}/qr")

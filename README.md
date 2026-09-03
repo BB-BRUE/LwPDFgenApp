@@ -216,7 +216,7 @@ Unter Windows wird die virtuelle Umgebung mit `.venv\Scripts\activate` aktiviert
 | `PUBLIC_BASE_URL` | erforderlich für produktive QR-Links | Öffentliche HTTPS-Basisadresse |
 | `APP_USERNAME` / `APP_PASSWORD` | leer | Optionaler HTTP-Basisschutz der Verwaltung |
 | `MAX_UPLOAD_MB` | `50` | Maximale Upload-Größe in MB |
-| `PDF_BRAND_LABEL` | `Bartenbach · Lichtkonzept` | Markenlabel im mobilen PDF |
+| `PDF_BRAND_LOGO` | `/app/static/bartenbach_master.png` | Markenlogo im mobilen PDF |
 | `SWAG_NETWORK` | `swag_proxy-net` | Name des externen SWAG-Netzes |
 | `APP_UID` / `APP_GID` | `1000` | Numerische UID/GID des Container-Benutzers |
 

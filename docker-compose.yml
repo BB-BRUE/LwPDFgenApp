@@ -14,7 +14,7 @@ services:
       APP_USERNAME: ${APP_USERNAME:-}
       APP_PASSWORD: ${APP_PASSWORD:-}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-50}
-      PDF_BRAND_LABEL: ${PDF_BRAND_LABEL:-Bartenbach · Lichtkonzept}
+      PDF_BRAND_LOGO: ${PDF_BRAND_LOGO:-/app/static/bartenbach_master.png}
       TRUST_PROXY_HEADERS: "true"
     volumes:
       - ./data:/app/data

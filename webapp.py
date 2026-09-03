@@ -62,7 +62,7 @@ def conversion_config() -> dict:
         "conversion": {
             "width_mm": float(os.getenv("PDF_WIDTH_MM", "108")),
             "margin_mm": float(os.getenv("PDF_MARGIN_MM", "15")),
-            "brand_label": os.getenv("PDF_BRAND_LABEL", "Bartenbach · Lichtkonzept"),
+            "brand_logo": os.getenv("PDF_BRAND_LOGO", str(STATIC_ROOT / "bartenbach_master.png")),
             "footer": os.getenv(
                 "PDF_FOOTER",
                 "Smartphone-optimierte Fassung · automatisch aus der Original-PDF erstellt",
