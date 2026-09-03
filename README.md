@@ -1,23 +1,21 @@
 # LwPDFgenApp
 
-Der Projektordner ist eigenständig. Für die Installation auf dem Linux-Webserver muss ausschließlich `LwPDFgenApp` kopiert werden.
+LwPDFgenApp stellt eine Weboberfläche bereit, mit der PDF-Dateien hochgeladen, für Smartphones optimiert und zusammen mit einem QR-Code veröffentlicht werden können. Für die Installation auf dem Linux-Webserver genügt der vollständige Projektordner `LwPDFgenApp`.
 
-Die Weboberfläche ergänzt die bestehende Pipeline um:
+## Funktionen und URLs
 
-- eine Verwaltungsseite unter `/app/`
-- Upload einer PDF und direkte Umwandlung in die mobile Fassung
-- dauerhafte Ablage der fertigen Dateien
-- öffentliche PDFs unter `/pdf/<datei>.pdf`
-- QR-Code-Download für jede vorhandene PDF
-- QR-Codes im Bartenbach-Design mit schwarzem Codemuster und orangefarbenem B-Mittelzeichen
-- Öffnen und Löschen vorhandener PDFs
-- optionalen HTTP-Basisschutz für die Verwaltungsoberfläche
+- `/` und `/index.html`: öffentliche, zweisprachige Lichtwelt-Startseite
+- `/app/`: PDF-Verwaltung mit Upload, Liste, QR-Download und Löschen
+- `/pdf/<datei>.pdf`: Auslieferung einer erzeugten mobilen PDF
+- `/app/api/health`: Gesundheitsprüfung
+- optionaler HTTP-Basisschutz für die Verwaltung
+- QR-Codes im Bartenbach-Design mit schwarzem Codemuster und originalem Bartenbach-Punktlogo
 
-Die PDF-Links unter `/pdf/<datei>.pdf` bleiben bewusst ohne Anmeldung erreichbar, damit die heruntergeladenen QR-Codes auf Smartphones funktionieren. Upload, Liste, QR-Erzeugung und Löschen sind geschützt, sobald Benutzername und Passwort gesetzt wurden.
+Die Anwendung selbst verlangt für `/pdf/...` keine Anmeldung, damit QR-Links auf Smartphones funktionieren. Die mitgelieferte SWAG-Konfiguration schränkt diese URLs zusätzlich auf die dort eingetragenen Quell-IP-Adressen ein.
 
-## Ein gemeinsames Datenverzeichnis
+## Gemeinsames Datenverzeichnis
 
-Die Anwendung verwendet nur noch das eine, persistente Host-Verzeichnis `data`, das als `/app/data` in den Container eingebunden wird:
+Es gibt nur einen persistenten Bind-Mount: Das Host-Verzeichnis `data` wird als `/app/data` in den Container eingebunden.
 
 ```text
 data/
@@ -26,98 +24,210 @@ data/
 ├── bartenbach-logo.png
 ├── wifi-lw-internet-qr.png
 └── pdf/
+    ├── .tmp/
     └── *.pdf
 ```
 
-- `data/index.html` ist die öffentliche Startseite unter `/` und `/index.html`.
-- `data/pdf-nicht-gefunden.html` wird für fehlende PDFs ausgeliefert.
-- `data/pdf` enthält die erzeugten mobilen PDFs und das temporäre Arbeitsverzeichnis `.tmp`.
+- `data/index.html` ist die öffentliche Startseite.
+- `data/pdf-nicht-gefunden.html` wird bei fehlenden PDFs angezeigt.
+- `data/bartenbach-logo.png` ist das auf der Startseite verwendete Logo.
+- `data/wifi-lw-internet-qr.png` verbindet mit dem WLAN `LW-Internet` und dem Passwort `LW2015Ald`.
+- `data/pdf` enthält temporäre Dateien und die erzeugten mobilen PDFs.
 
-Fehlen die beiden HTML-Dateien beim ersten Start, kopiert der Container Standardversionen aus dem Image nach `data`. Vorhandene Dateien werden nicht überschrieben. Eine bereits verwendete öffentliche Startseite sollte daher vor dem ersten Start nach `data/index.html` kopiert werden.
+Beim Containerstart gilt:
 
-Die zweisprachige Beispiel-Startseite liegt unter `static/index.example.html`. Das bereitgestellte Logo `static/bartenbach_lighting innovators.png` und der erzeugte WLAN-QR-Code `static/wifi-lw-internet-qr.png` werden beim ersten Start als separate PNG-Dateien nach `data` kopiert und über `/site-assets/` ausgeliefert.
+- Fehlt `data/index.html`, wird `static/index.example.html` dorthin kopiert.
+- Fehlt `data/pdf-nicht-gefunden.html`, wird die Standard-Fehlerseite kopiert.
+- Logo und WLAN-QR-Code werden bei jedem Start aus dem aktuellen Image aktualisiert.
+- Vorhandene HTML-Dateien werden nicht überschrieben.
 
-Ein separates Webroot im SWAG-Verzeichnis, beispielsweise `/config/www/lichtwelt`, wird nicht mehr benötigt. SWAG leitet Startseite, Fehlerseite, Verwaltung und PDFs an den App-Container weiter.
+Die Beispiel-Startseite ist responsiv und enthält deutsche sowie englische Texte. Logo und QR-Code werden als echte PNG-Dateien über `/site-assets/` ausgeliefert; sie sind nicht als Base64 im HTML eingebettet.
 
-## Start mit Docker Compose
+Ein separates Webroot im SWAG-Verzeichnis, beispielsweise `/config/www/lichtwelt`, wird nicht mehr benötigt.
 
-Im Projektordner:
+## Installation mit Docker Compose
+
+### 1. Konfiguration vorbereiten
 
 ```bash
 cp .env.example .env
 mkdir -p data/pdf
 ```
 
-Falls bereits eine öffentliche Startseite existiert, diese jetzt übernehmen:
-
-```bash
-cp /pfad/zur/bisherigen/index.html data/index.html
-```
-
-In `.env` mindestens die öffentliche Subdomain und ein starkes Passwort eintragen:
+In `.env` mindestens die öffentliche Adresse und ein starkes Passwort setzen:
 
 ```dotenv
 PUBLIC_BASE_URL=https://lichtwelt.bartenbach.com
 APP_USERNAME=admin
 APP_PASSWORD=ein-langes-zufaelliges-passwort
+SWAG_NETWORK=swag_proxy-net
+APP_UID=1000
+APP_GID=1000
 ```
 
-Das gemeinsame SWAG-Netz heißt standardmäßig `swag_proxy-net`. Bei Bedarf kann `SWAG_NETWORK` in `.env` geändert werden. Danach starten:
+`APP_USERNAME` und `APP_PASSWORD` müssen entweder beide gesetzt oder beide leer sein.
+
+Falls eine bestehende öffentliche Startseite übernommen werden soll, muss sie vor dem ersten Start nach `data/index.html` kopiert werden:
+
+```bash
+cp /pfad/zur/bisherigen/index.html data/index.html
+```
+
+Für die mitgelieferte Beispielseite ist kein manueller Kopiervorgang nötig.
+
+### 2. SWAG-Netz prüfen
+
+Das externe Docker-Netz heißt standardmäßig `swag_proxy-net`:
+
+```bash
+docker network inspect swag_proxy-net
+```
+
+Hat das Netz einen anderen Namen, muss `SWAG_NETWORK` in `.env` entsprechend geändert werden.
+
+### 3. Anwendung bauen und starten
 
 ```bash
 docker compose up -d --build
 ```
 
-Die Anwendung veröffentlicht absichtlich keinen Host-Port und ist nur im gemeinsamen Docker-Netz erreichbar.
+Der Anwendungscontainer veröffentlicht absichtlich keinen Host-Port und ist nur im gemeinsamen SWAG-Netz erreichbar.
 
-### Berechtigungen des Datenverzeichnisses
+Status und Logs prüfen:
 
-Ein Host-Benutzer mit dem Namen `lwpdfgen` allein löst Bind-Mount-Berechtigungen nicht zuverlässig: Linux vergleicht die numerische UID und GID, nicht den Benutzernamen.
+```bash
+docker compose ps
+docker compose logs --tail=100 lwpdfgen
+```
 
-Der Container-Benutzer `lwpdfgen` wird standardmäßig mit UID und GID `1000` gebaut. Damit erscheinen die Dateien auf einem Ubuntu-Host mit Benutzer `ubuntu` (UID/GID `1000`) als Eigentum von `ubuntu`. Die Werte können bei Bedarf über `APP_UID` und `APP_GID` in `.env` geändert werden.
+## Dateirechte und Benutzer
 
-Der Container startet deshalb nur für die Initialisierung mit Root-Rechten. Der Entry-Point legt `data/pdf/.tmp` an, setzt den Container-Benutzer `lwpdfgen` als Eigentümer der benötigten Verzeichnisse und Dateien und startet Gunicorn anschließend als dieser unprivilegierte Benutzer. Die Webanwendung selbst läuft nicht als Root. Auf einem normalen lokalen Linux-Dateisystem ist deshalb kein zusätzlicher Host-Benutzer und kein manuelles `chmod 777` erforderlich.
+Ein Host-Benutzer mit dem Namen `lwpdfgen` allein löst Bind-Mount-Berechtigungen nicht zuverlässig. Linux vergleicht bei Dateirechten die numerische UID und GID, nicht den Benutzernamen.
 
-Bei Dateisystemen, die `chown` verbieten, etwa manchen NFS- oder Rootless-Konfigurationen, müssen UID/GID des Host-Verzeichnisses stattdessen numerisch an den Container-Benutzer angepasst werden.
+Der Container-Benutzer `lwpdfgen` wird standardmäßig mit UID/GID `1000:1000` gebaut. Andere Werte können über `APP_UID` und `APP_GID` in `.env` gesetzt werden.
+
+Der Container startet nur zur Initialisierung mit Root-Rechten. Der Entry-Point:
+
+1. legt `/app/data/pdf/.tmp` an,
+2. setzt `lwpdfgen` als Eigentümer der benötigten Verzeichnisse und Dateien,
+3. wechselt auf die konfigurierte UID/GID,
+4. startet Gunicorn als unprivilegierter Benutzer.
+
+Auf einem normalen lokalen Linux-Dateisystem ist deshalb kein zusätzlicher Host-Benutzer und kein `chmod 777` erforderlich. Bei NFS-, Rootless- oder anderen Dateisystemen, die `chown` verhindern, muss das Host-Verzeichnis vorab numerisch der konfigurierten UID/GID zugeordnet werden.
+
+## Startseite und WLAN-QR-Code
+
+Die Vorlage liegt in `static/index.example.html`. Sie verwendet:
+
+- `static/bartenbach_lighting innovators.png` als Logoquelle,
+- `static/wifi-lw-internet-qr.png` als WLAN-QR-Code,
+- Deutsch und Englisch,
+- die Markenfarben Orange `RGB 250/150/30` (`#FA961E`) und Dunkel `#1A171B`.
+
+Der WLAN-QR-Code enthält:
+
+```text
+WIFI:T:WPA;S:LW-Internet;P:LW2015Ald;;
+```
+
+Soll eine bereits vorhandene `data/index.html` durch die Beispielseite ersetzt werden:
+
+```bash
+cp static/index.example.html data/index.html
+docker compose restart lwpdfgen
+```
+
+## QR-Codes für PDFs
+
+Der QR-Download unter `/app/` wird zentral von `mobile_pdf_pipeline.py` erzeugt. Jeder QR-Code verwendet:
+
+- Fehlerkorrekturstufe `H`,
+- schwarze QR-Module auf weißem Grund,
+- einen weißen Sicherheitsabstand,
+- das originale Bartenbach-Punktlogo aus `static/dot_bartenbach.png` in der Mitte.
+
+Nach Änderungen an der QR-Erzeugung muss das Image neu gebaut werden:
+
+```bash
+docker compose up -d --build
+```
 
 ## SWAG-Proxy
 
-`deploy/swag/lichtwelt.subdomain.conf.example` enthält die vollständige Serverkonfiguration für `lichtwelt.bartenbach.com`. Sie übernimmt:
+Es stehen zwei vollständige Beispielkonfigurationen zur Auswahl:
 
-- Weiterleitung der öffentlichen Startseite an den App-Container
-- Verwaltung unter `/app/`
-- IP-geschützte PDF-Auslieferung unter `/pdf/`
-- Weiterleitung nicht erlaubter PDF-Aufrufe auf `/index.html`
-- Ausgabe von `data/pdf-nicht-gefunden.html` bei fehlenden PDFs
+- `deploy/swag/lichtwelt.subdomain.conf.example`: kompakter Proxy mit PDF-Zugriff nur für die darin freigegebenen Quell-IP-Adressen.
+- `deploy/swag/lichtwelt-public.subdomain.conf.example`: kompakter Einzel-Proxy ohne IP-Einschränkung; jede Person mit dem Link kann die PDF abrufen.
 
-Die bisherige Lichtwelt-Konfiguration im SWAG-Volume durch diese Konfiguration ersetzen. Es müssen keine HTML-Dateien mehr in das SWAG-Webroot kopiert werden. Anschließend die Nginx-Konfiguration testen und SWAG neu laden oder neu starten.
+Beide Varianten übernehmen:
 
-Wichtig: `PUBLIC_BASE_URL` muss exakt der von außen erreichbaren HTTPS-Adresse entsprechen. Diese Adresse wird in die QR-Codes geschrieben.
+- Weiterleitung der Startseite an den App-Container,
+- Auslieferung von Logo und WLAN-QR-Code über `/site-assets/`,
+- Verwaltung unter `/app/`,
+- PDF-Auslieferung unter `/pdf/`,
+- Ausgabe von `data/pdf-nicht-gefunden.html` bei fehlenden PDFs.
 
-## Lokaler Entwicklungsstart
+Nur die IP-geschützte Variante leitet nicht freigegebene PDF-Aufrufe auf `/index.html` weiter. Die öffentliche Variante enthält keine `allow`-, `deny`- oder IP-bezogenen `error_page`-Regeln.
 
-Die folgenden Befehle werden im Projektordner ausgeführt:
+Die gewünschte Variante als aktive Lichtwelt-Konfiguration in das SWAG-Volume übernehmen. HTML- oder PNG-Dateien müssen nicht in das SWAG-Webroot kopiert werden.
+
+Danach die Nginx-Konfiguration im SWAG-Container testen und SWAG neu laden beziehungsweise neu starten. Der konkrete Containername hängt von der SWAG-Installation ab, beispielsweise:
+
+```bash
+docker exec <swag-container> nginx -t
+docker restart <swag-container>
+```
+
+`PUBLIC_BASE_URL` muss exakt der von außen erreichbaren HTTPS-Adresse entsprechen, da diese Adresse in die PDF-QR-Codes geschrieben wird.
+
+## Aktualisierung
+
+Nach Änderungen am Projekt:
+
+```bash
+docker compose up -d --build
+docker compose logs --tail=100 lwpdfgen
+```
+
+Die persistenten PDFs und benutzerdefinierten HTML-Dateien in `data` bleiben erhalten. Die verwalteten Logo- und WLAN-QR-PNGs werden aus dem neuen Image aktualisiert.
+
+## Lokaler Entwicklungsstart ohne Docker
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+mkdir -p data/pdf
+cp static/index.example.html data/index.html
+cp static/pdf-nicht-gefunden.html data/pdf-nicht-gefunden.html
+cp "static/bartenbach_lighting innovators.png" data/bartenbach-logo.png
+cp static/wifi-lw-internet-qr.png data/wifi-lw-internet-qr.png
 APP_DATA_DIR=data PDF_STORAGE_DIR=data/pdf PUBLIC_BASE_URL=http://localhost:8000 python webapp.py
 ```
 
-Unter Windows lautet die Aktivierung `.venv\\Scripts\\activate`. Umgebungsvariablen werden in PowerShell mit `$env:NAME="Wert"` gesetzt.
+Unter Windows wird die virtuelle Umgebung mit `.venv\Scripts\activate` aktiviert. Umgebungsvariablen werden in PowerShell mit `$env:NAME="Wert"` gesetzt.
 
-## Einstellungen
+## Konfigurationsvariablen
+
+### Von Docker Compose verwendet
 
 | Variable | Standard | Zweck |
 | --- | --- | --- |
-| `PUBLIC_BASE_URL` | aktuelle Request-Adresse | Öffentliche Basisadresse für QR-Codes |
-| `APP_USERNAME` / `APP_PASSWORD` | leer | Optionaler Schutz der Verwaltung |
-| `MAX_UPLOAD_MB` | `50` | Maximale Upload-Größe |
-| `APP_DATA_DIR` | `data` | Gemeinsame Ablage für öffentliche HTML-Dateien und PDFs |
-| `PDF_STORAGE_DIR` | `<APP_DATA_DIR>/pdf` | Ablage der mobilen PDFs |
+| `PUBLIC_BASE_URL` | erforderlich für produktive QR-Links | Öffentliche HTTPS-Basisadresse |
+| `APP_USERNAME` / `APP_PASSWORD` | leer | Optionaler HTTP-Basisschutz der Verwaltung |
+| `MAX_UPLOAD_MB` | `50` | Maximale Upload-Größe in MB |
 | `PDF_BRAND_LABEL` | `Bartenbach · Lichtkonzept` | Markenlabel im mobilen PDF |
-| `PDF_WIDTH_MM` | `108` | Seitenbreite der mobilen PDF |
-| `PDF_MARGIN_MM` | `15` | Seitenrand der mobilen PDF |
+| `SWAG_NETWORK` | `swag_proxy-net` | Name des externen SWAG-Netzes |
+| `APP_UID` / `APP_GID` | `1000` | Numerische UID/GID des Container-Benutzers |
+
+### Interne Pfade und weitere App-Optionen
+
+| Variable | Standard ohne Docker | Docker-Compose-Wert | Zweck |
+| --- | --- | --- | --- |
+| `APP_DATA_DIR` | `data` | `/app/data` | Gemeinsame Ablage für HTML, PNGs und PDFs |
+| `PDF_STORAGE_DIR` | `<APP_DATA_DIR>/pdf` | `/app/data/pdf` | Ablage der mobilen PDFs |
+| `PDF_WIDTH_MM` | `108` | nicht explizit gesetzt | Seitenbreite der mobilen PDF |
+| `PDF_MARGIN_MM` | `15` | nicht explizit gesetzt | Seitenrand der mobilen PDF |
+| `PDF_FOOTER` | Standardtext der Anwendung | nicht explizit gesetzt | Fußzeile im mobilen PDF |
 
 Gesundheitsprüfung: `GET /app/api/health`.

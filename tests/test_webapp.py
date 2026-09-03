@@ -61,8 +61,16 @@ def test_upload_list_qr_and_delete(client):
     assert qr.data.startswith(b"\x89PNG")
     qr_image = Image.open(io.BytesIO(qr.data)).convert("RGB")
     center = qr_image.width // 2
-    center_pixels = qr_image.crop((center - 100, center - 100, center + 100, center + 100)).getdata()
-    assert (250, 150, 30) in center_pixels
+    logo_size = round(qr_image.width * 0.21)
+    with Image.open(Path(__file__).parents[1] / "static" / "dot_bartenbach.png") as source_logo:
+        logo = source_logo.convert("RGBA").resize((logo_size, logo_size), Image.Resampling.LANCZOS)
+        expected_logo = Image.new("RGBA", (logo_size, logo_size), "white")
+        expected_logo.alpha_composite(logo)
+    logo_left = center - logo_size // 2
+    qr_logo = qr_image.crop(
+        (logo_left, logo_left, logo_left + logo_size, logo_left + logo_size)
+    )
+    assert qr_logo.tobytes() == expected_logo.convert("RGB").tobytes()
     qr.close()
 
     deleted = client.delete(f"/app/api/documents/{name}", headers={"X-LwPDFgen": "web"})
