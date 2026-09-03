@@ -1,0 +1,76 @@
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+
+    server_name lichtwelt.bartenbach.com;
+
+    root /config/www/lichtwelt;
+    index index.html;
+
+    include /config/nginx/ssl.conf;
+
+    # Statische Startseite der bestehenden Lichtwelt-Website.
+    location = /index.html {
+        try_files /index.html =404;
+    }
+
+    # Die statische PDF-Fehlerseite ist nur über error_page erreichbar.
+    location = /pdf-nicht-gefunden.html {
+        internal;
+        try_files /pdf-nicht-gefunden.html =404;
+    }
+
+    # Die Verwaltungsoberfläche liegt unter /app/.
+    location = /app {
+        return 301 /app/;
+    }
+
+    location ^~ /app/ {
+        include /config/nginx/proxy.conf;
+        include /config/nginx/resolver.conf;
+
+        set $upstream_app lwpdfgen;
+        set $upstream_port 8000;
+        set $upstream_proto http;
+
+        client_max_body_size 50m;
+        proxy_pass $upstream_proto://$upstream_app:$upstream_port;
+    }
+
+    # Öffentliche PDF-Adressen werden von LwPDFgenApp ausgeliefert,
+    # bleiben aber auf die erlaubten Quell-IP-Adressen beschränkt.
+    location ^~ /pdf/ {
+        # Weitere erlaubte Adressen bei Bedarf ergänzen.
+        # allow 203.0.113.25;
+        allow 91.118.9.128/28;
+        deny all;
+
+        autoindex off;
+
+        # Nicht erlaubte IP: unabhängig von der Existenz der PDF zur Startseite.
+        error_page 403 = @pdf_startseite;
+
+        # Erlaubte IP, PDF existiert aber nicht: statische Fehlerseite ausliefern.
+        proxy_intercept_errors on;
+        error_page 404 /pdf-nicht-gefunden.html;
+
+        include /config/nginx/proxy.conf;
+        include /config/nginx/resolver.conf;
+
+        set $upstream_app lwpdfgen;
+        set $upstream_port 8000;
+        set $upstream_proto http;
+
+        proxy_pass $upstream_proto://$upstream_app:$upstream_port;
+    }
+
+    # Browser mit nicht erlaubter Quell-IP auf die Startseite umleiten.
+    location @pdf_startseite {
+        return 302 /index.html;
+    }
+
+    # Restliche statische Website ohne internen Fallback.
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

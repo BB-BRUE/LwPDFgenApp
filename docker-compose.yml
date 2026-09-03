@@ -1,0 +1,21 @@
+services:
+  lwpdfgen:
+    build: .
+    container_name: lwpdfgen
+    restart: unless-stopped
+    environment:
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      APP_USERNAME: ${APP_USERNAME:-}
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-50}
+      PDF_BRAND_LABEL: ${PDF_BRAND_LABEL:-Bartenbach · Lichtkonzept}
+      TRUST_PROXY_HEADERS: "true"
+    volumes:
+      - ./data/pdf:/app/pdf
+    networks:
+      - swag
+
+networks:
+  swag:
+    external: true
+    name: ${SWAG_NETWORK:-swag}

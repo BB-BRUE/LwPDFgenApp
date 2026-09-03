@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PDFs für Mobilgeräte optimieren und per QR-Code bereitstellen.">
+  <title>LwPDFgen · Mobile PDF-Bibliothek</title>
+  <link rel="stylesheet" href="/app/static/app.css">
+  <script defer src="/app/static/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/app/" aria-label="LwPDFgen Startseite">
+      <span class="brand-mark" aria-hidden="true">LW</span>
+      <span><strong>LwPDFgen</strong><small>Mobile PDF-Bibliothek</small></span>
+    </a>
+    <span class="status"><i aria-hidden="true"></i> Bereit</span>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">PDF-WERKZEUG</p>
+        <h1 id="page-title">Vom Datenblatt zum mobilen Erlebnis.</h1>
+        <p>PDF hochladen, automatisch fürs Smartphone aufbereiten und den fertigen QR-Code direkt weitergeben.</p>
+      </div>
+      <div class="steps" aria-label="Ablauf">
+        <span><b>01</b> Hochladen</span>
+        <span><b>02</b> Optimieren</span>
+        <span><b>03</b> Teilen</span>
+      </div>
+    </section>
+
+    <section class="workspace" aria-label="PDF hochladen">
+      <form id="upload-form" class="dropzone">
+        <input id="file-input" name="file" type="file" accept="application/pdf,.pdf" hidden>
+        <div class="upload-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+        </div>
+        <h2>PDF hier ablegen</h2>
+        <p>oder <button class="text-button" type="button" id="choose-file">Datei auswählen</button></p>
+        <small>PDF · maximal 50 MB</small>
+      </form>
+      <div id="upload-progress" class="progress-panel" hidden aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <div><strong>Mobile PDF wird erstellt</strong><span id="progress-filename"></span></div>
+      </div>
+    </section>
+
+    <section class="library" aria-labelledby="library-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">ABLAGE / PDF</p>
+          <h2 id="library-title">Vorhandene PDFs</h2>
+        </div>
+        <button id="refresh" class="icon-button" type="button" title="Liste aktualisieren" aria-label="Liste aktualisieren">
+          <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8.68M20 4v4.68h-4.68"/></svg>
+        </button>
+      </div>
+      <div id="document-list" class="document-list" aria-live="polite"></div>
+      <div id="empty-state" class="empty-state" hidden>
+        <span aria-hidden="true">PDF</span>
+        <h3>Noch keine mobilen PDFs</h3>
+        <p>Die erste konvertierte Datei erscheint automatisch hier.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog id="delete-dialog">
+    <form method="dialog">
+      <div class="dialog-icon" aria-hidden="true">!</div>
+      <h2>PDF wirklich löschen?</h2>
+      <p><strong id="delete-name"></strong> wird dauerhaft aus der Ablage entfernt.</p>
+      <div class="dialog-actions">
+        <button value="cancel" class="button secondary">Abbrechen</button>
+        <button id="confirm-delete" value="default" class="button danger">PDF löschen</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
