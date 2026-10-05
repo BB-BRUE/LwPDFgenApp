@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 from PIL import Image
 from pypdf import PdfReader
-from pypdf import PdfReader
 from reportlab.pdfgen import canvas
 
 
@@ -51,6 +50,12 @@ def test_upload_list_qr_and_delete(client):
     listing = client.get("/app/api/documents")
     assert listing.status_code == 200
     assert listing.json["documents"][0]["url"] == f"https://pdf.example.com/pdf/{name}"
+    assert listing.json["documents"][0]["access_count"] == 0
+
+    head = client.head(f"/pdf/{name}")
+    assert head.status_code == 200
+    head.close()
+    assert client.get("/app/api/documents").json["documents"][0]["access_count"] == 0
 
     pdf = client.get(f"/pdf/{name}")
     assert pdf.status_code == 200
@@ -59,6 +64,12 @@ def test_upload_list_qr_and_delete(client):
     assert "BARTENBACH" not in (generated_page.extract_text() or "").upper()
     assert len(generated_page.images) >= 1
     pdf.close()
+    assert client.get("/app/api/documents").json["documents"][0]["access_count"] == 1
+
+    second_pdf = client.get(f"/pdf/{name}")
+    assert second_pdf.status_code == 200
+    second_pdf.close()
+    assert client.get("/app/api/documents").json["documents"][0]["access_count"] == 2
 
     qr = client.get(f"/app/api/documents/{name}/qr")
     assert qr.status_code == 200
@@ -119,7 +130,7 @@ def test_static_app_routes(client):
 
 def test_public_pages_are_served_from_data_directory(client, tmp_path: Path):
     data = tmp_path / "data"
-    data.mkdir()
+    data.mkdir(exist_ok=True)
     (data / "index.html").write_text("public start", encoding="utf-8")
     (data / "pdf-nicht-gefunden.html").write_text("public 404", encoding="utf-8")
     (data / "bartenbach-logo.png").write_bytes(b"logo")

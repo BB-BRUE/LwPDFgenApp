@@ -5,7 +5,7 @@ LwPDFgenApp stellt eine Weboberfläche bereit, mit der PDF-Dateien hochgeladen, 
 ## Funktionen und URLs
 
 - `/` und `/index.html`: öffentliche, zweisprachige Lichtwelt-Startseite
-- `/app/`: PDF-Verwaltung mit Upload, Liste, QR-Download und Löschen
+- `/app/`: PDF-Verwaltung mit Upload, Liste, Aufrufszähler, QR-Download und Löschen
 - `/pdf/<datei>.pdf`: Auslieferung einer erzeugten mobilen PDF
 - `/app/api/health`: Gesundheitsprüfung
 - optionaler HTTP-Basisschutz für die Verwaltung
@@ -23,6 +23,7 @@ data/
 ├── pdf-nicht-gefunden.html
 ├── bartenbach-logo.png
 ├── wifi-lw-internet-qr.png
+├── pdf-access.sqlite3
 └── pdf/
     ├── .tmp/
     └── *.pdf
@@ -32,7 +33,10 @@ data/
 - `data/pdf-nicht-gefunden.html` wird bei fehlenden PDFs angezeigt.
 - `data/bartenbach-logo.png` ist das auf der Startseite verwendete Logo.
 - `data/wifi-lw-internet-qr.png` verbindet mit dem WLAN `LW-Internet` und dem Passwort `LW2015Ald`.
+- `data/pdf-access.sqlite3` speichert die Aufrufszähler der mobilen PDFs.
 - `data/pdf` enthält temporäre Dateien und die erzeugten mobilen PDFs.
+
+Jeder erfolgreiche `GET`-Abruf unter `/pdf/<datei>.pdf` erhöht den Zähler der Datei. `HEAD`-Anfragen und fehlende PDFs werden nicht gezählt. Beim Löschen einer PDF über die Verwaltung wird auch ihr Zähler entfernt.
 
 Beim Containerstart gilt:
 

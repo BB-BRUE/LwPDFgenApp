@@ -38,6 +38,11 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("de-AT", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+function formatAccessCount(count) {
+  const value = Number.isFinite(count) ? count : 0;
+  return `${value} ${value === 1 ? "Aufruf" : "Aufrufe"}`;
+}
+
 function documentRow(document) {
   const row = window.document.createElement("article");
   row.className = "document";
@@ -53,7 +58,7 @@ function documentRow(document) {
   title.rel = "noopener";
   title.textContent = document.name;
   const meta = window.document.createElement("span");
-  meta.textContent = `${formatSize(document.size)} · ${formatDate(document.created_at)}`;
+  meta.textContent = `${formatSize(document.size)} · ${formatDate(document.created_at)} · ${formatAccessCount(document.access_count)}`;
   info.append(title, meta);
 
   const actions = window.document.createElement("div");

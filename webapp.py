@@ -6,6 +6,7 @@ from __future__ import annotations
 import hmac
 import io
 import os
+import sqlite3
 import tempfile
 import threading
 from datetime import datetime, timezone
@@ -49,6 +50,58 @@ def storage_directory() -> Path:
         path = Path(configured).expanduser()
         return (path if path.is_absolute() else APP_ROOT / path).resolve()
     return data_directory() / "pdf"
+
+
+def access_database_path() -> Path:
+    return data_directory() / "pdf-access.sqlite3"
+
+
+def initialize_access_database() -> None:
+    data_directory().mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(access_database_path(), timeout=10) as database:
+        database.execute("PRAGMA journal_mode=WAL")
+        database.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pdf_access_counts (
+                filename TEXT PRIMARY KEY,
+                access_count INTEGER NOT NULL DEFAULT 0 CHECK (access_count >= 0),
+                last_accessed_utc TEXT
+            )
+            """
+        )
+
+
+def access_counts() -> dict[str, int]:
+    with sqlite3.connect(access_database_path(), timeout=10) as database:
+        rows = database.execute(
+            "SELECT filename, access_count FROM pdf_access_counts"
+        ).fetchall()
+    return {str(filename): int(count) for filename, count in rows}
+
+
+def increment_access_count(filename: str) -> int:
+    accessed_at = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(access_database_path(), timeout=10) as database:
+        database.execute(
+            """
+            INSERT INTO pdf_access_counts (filename, access_count, last_accessed_utc)
+            VALUES (?, 1, ?)
+            ON CONFLICT(filename) DO UPDATE SET
+                access_count = pdf_access_counts.access_count + 1,
+                last_accessed_utc = excluded.last_accessed_utc
+            """,
+            (filename, accessed_at),
+        )
+        row = database.execute(
+            "SELECT access_count FROM pdf_access_counts WHERE filename = ?",
+            (filename,),
+        ).fetchone()
+    return int(row[0]) if row else 0
+
+
+def delete_access_count(filename: str) -> None:
+    with sqlite3.connect(access_database_path(), timeout=10) as database:
+        database.execute("DELETE FROM pdf_access_counts WHERE filename = ?", (filename,))
 
 
 def public_page(filename: str) -> Response:
@@ -105,13 +158,16 @@ def temporary_directory() -> Path:
     return path
 
 
-def file_record(path: Path) -> dict:
+def file_record(path: Path, count: int | None = None) -> dict:
     stat = path.stat()
+    if count is None:
+        count = access_counts().get(path.name, 0)
     return {
         "name": path.name,
         "size": stat.st_size,
         "created_at": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
         "url": public_pdf_url(path.name),
+        "access_count": count,
     }
 
 
@@ -128,6 +184,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     storage_directory().mkdir(parents=True, exist_ok=True)
+    initialize_access_database()
 
     @app.before_request
     def require_auth() -> Response | None:
@@ -210,7 +267,12 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.get(f"{APP_PREFIX}/api/documents")
     def list_documents() -> Response:
-        documents = [file_record(path) for path in storage_directory().glob("*.pdf") if path.is_file()]
+        counts = access_counts()
+        documents = [
+            file_record(path, counts.get(path.name, 0))
+            for path in storage_directory().glob("*.pdf")
+            if path.is_file()
+        ]
         documents.sort(key=lambda item: item["created_at"], reverse=True)
         return jsonify(documents=documents)
 
@@ -280,7 +342,10 @@ def create_app(test_config: dict | None = None) -> Flask:
             return public_page("pdf-nicht-gefunden.html"), 404
         if not path.is_file():
             return public_page("pdf-nicht-gefunden.html"), 404
-        return send_file(path, mimetype="application/pdf", conditional=True, max_age=0)
+        response = send_file(path, mimetype="application/pdf", conditional=True, max_age=0)
+        if request.method == "GET":
+            increment_access_count(path.name)
+        return response
 
     @app.delete(f"{APP_PREFIX}/api/documents/<path:filename>")
     def delete_document(filename: str) -> tuple[Response, int] | Response:
@@ -291,6 +356,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if not path.is_file():
             return jsonify(error="PDF nicht gefunden."), 404
         path.unlink()
+        delete_access_count(path.name)
         return jsonify(deleted=path.name)
 
     @app.errorhandler(RequestEntityTooLarge)
