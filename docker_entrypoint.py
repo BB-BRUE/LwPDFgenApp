@@ -29,7 +29,7 @@ def main() -> None:
         for source_name, target_name, overwrite in (
             ("index.example.html", "index.html", False),
             ("pdf-nicht-gefunden.html", "pdf-nicht-gefunden.html", False),
-            ("bartenbach_lighting innovators.png", "bartenbach-logo.png", True),
+            ("bbartenbach_master.png", "bartenbach-logo.png", True),
             ("wifi-lw-internet-qr.png", "wifi-lw-internet-qr.png", True),
         ):
             target = data / target_name

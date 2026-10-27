@@ -123,7 +123,7 @@ Auf einem normalen lokalen Linux-Dateisystem ist deshalb kein zusätzlicher Host
 
 Die Vorlage liegt in `static/index.example.html`. Sie verwendet:
 
-- `static/bartenbach_lighting innovators.png` als Logoquelle,
+- `static/bartenbach_master.png` als Logoquelle,
 - `static/wifi-lw-internet-qr.png` als WLAN-QR-Code,
 - Deutsch und Englisch,
 - die Markenfarben Orange `RGB 250/150/30` (`#FA961E`) und Dunkel `#1A171B`.
@@ -204,7 +204,7 @@ pip install -r requirements.txt
 mkdir -p data/pdf
 cp static/index.example.html data/index.html
 cp static/pdf-nicht-gefunden.html data/pdf-nicht-gefunden.html
-cp "static/bartenbach_lighting innovators.png" data/bartenbach-logo.png
+cp "static/bartenbach_master.png" data/bartenbach-logo.png
 cp static/wifi-lw-internet-qr.png data/wifi-lw-internet-qr.png
 APP_DATA_DIR=data PDF_STORAGE_DIR=data/pdf PUBLIC_BASE_URL=http://localhost:8000 python webapp.py
 ```
